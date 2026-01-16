@@ -97,11 +97,5 @@ jobs:
           echo "# Security Scan Results" >> $GITHUB_STEP_SUMMARY
           if [ -f security-scan-results.json ]; then
             echo "## Findings Summary" >> $GITHUB_STEP_SUMMARY
-            python3 -c "
-import json
-with open('security-scan-results.json') as f:
-    results = json.load(f)
-    for tool, count in results.get('findings_by_tool', {}).items():
-        print(f'- {tool}: {count} findings')
-" >> $GITHUB_STEP_SUMMARY
+            jq -r '.findings_by_tool | to_entries[] | "- \(.key): \(.value) findings"' security-scan-results.json >> $GITHUB_STEP_SUMMARY
           fi
