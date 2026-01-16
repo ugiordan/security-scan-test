@@ -23,6 +23,7 @@ jobs:
         run: python3 .github/scripts/security/install-plugins.py
         env:
           SECURITY_PLUGINS_DIR: /opt/security-plugins
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
 
       # Step 2: Run Built-in Scanners
       - name: Run Gitleaks

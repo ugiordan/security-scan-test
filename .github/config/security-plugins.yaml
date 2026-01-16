@@ -155,7 +155,8 @@ plugins:
       path: "fips-compliance-checker"  # Subdirectory in repo
       ref: main
       auth:
-        type: none  # Use 'token' with token_secret for private repos
+        type: token
+        token_secret: GITLAB_TOKEN  # Environment variable for GitLab authentication
 
     # Execution configuration (adapter uses installed location)
     execution:
