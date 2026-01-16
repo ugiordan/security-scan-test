@@ -9,6 +9,10 @@ name: Security Full Codebase Scan
 # - On-demand: Can be triggered via GitHub UI or gh CLI
 
 on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:  # Manual trigger via GitHub UI or gh CLI
     inputs:
       test_advisory:
