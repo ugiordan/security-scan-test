@@ -75,7 +75,7 @@ jobs:
 
       # Step 3: Aggregate All Findings (including external plugins)
       - name: Aggregate Security Findings
-        run: python3 .github/scripts/security/orchestrator.py
+        run: python3 .github/scripts/run-security-orchestrator.py
         env:
           SECURITY_PLUGINS_DIR: /opt/security-plugins
 
