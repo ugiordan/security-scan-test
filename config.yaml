@@ -1,0 +1,21 @@
+# Intentional yamllint issues for testing
+
+# Trailing spaces
+key1: value1
+
+# Indentation error
+  key2: value2
+
+# Line too long
+key3: this is a very long line that exceeds the maximum line length limit and should trigger a yamllint warning about line length
+
+# Missing document start
+database:
+  host: localhost
+  port: 5432
+  # Hardcoded credentials
+  password: "admin123"
+  username: root
+
+# Tab character instead of spaces
+	key4: value4

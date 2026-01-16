@@ -1,0 +1,19 @@
+name: Test Workflow
+on: [push]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      # actionlint issue: missing uses version
+      - uses: actions/checkout
+
+      # actionlint issue: unknown action
+      - uses: unknown/action@v1
+
+      # actionlint issue: deprecated set-output
+      - name: Set output
+        run: echo "::set-output name=result::value"
+
+      # actionlint issue: workflow command injection
+      - name: Vulnerable command
+        run: echo "${{ github.event.issue.title }}"

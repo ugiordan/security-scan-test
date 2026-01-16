@@ -1,0 +1,106 @@
+name: Security Full Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 1: Install External Security Plugins
+      - name: Install External Security Plugins
+        run: python3 .github/scripts/security/install-plugins.py
+        env:
+          SECURITY_PLUGINS_DIR: /opt/security-plugins
+
+      # Step 2: Run Built-in Scanners
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE}}
+        continue-on-error: true
+
+      - name: Run TruffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          extra_args: --json --only-verified=false
+        continue-on-error: true
+
+      - name: Run Semgrep
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: auto
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+        continue-on-error: true
+
+      - name: Run Hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          format: json
+          output-file: hadolint.json
+        continue-on-error: true
+
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          format: json
+        continue-on-error: true
+
+      - name: Run yamllint
+        run: |
+          pip install yamllint
+          yamllint -f parsable . > yamllint.txt || true
+        continue-on-error: true
+
+      - name: Run actionlint
+        uses: raven-actions/actionlint@v1
+        with:
+          format: '{{json .}}'
+        continue-on-error: true
+
+      # Step 3: Aggregate All Findings (including external plugins)
+      - name: Aggregate Security Findings
+        run: python3 .github/scripts/security/orchestrator.py
+        env:
+          SECURITY_PLUGINS_DIR: /opt/security-plugins
+
+      # Step 4: Upload Results
+      - name: Upload Security Scan Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-scan-results
+          path: |
+            security-scan-results.json
+            *-results.json
+            *.sarif
+
+      # Step 5: Generate Summary
+      - name: Generate Security Summary
+        if: always()
+        run: |
+          echo "# Security Scan Results" >> $GITHUB_STEP_SUMMARY
+          if [ -f security-scan-results.json ]; then
+            echo "## Findings Summary" >> $GITHUB_STEP_SUMMARY
+            python3 -c "
+import json
+with open('security-scan-results.json') as f:
+    results = json.load(f)
+    for tool, count in results.get('findings_by_tool', {}).items():
+        print(f'- {tool}: {count} findings')
+" >> $GITHUB_STEP_SUMMARY
+          fi

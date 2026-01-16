@@ -1,0 +1,187 @@
+version: "3.0"
+description: "Security plugin registry for extensible security scanning"
+
+# Global execution configuration
+execution:
+  parallel: true            # Run plugins concurrently
+  default_timeout: 300      # 5 minutes per plugin
+  continue_on_error: true   # Don't stop on individual plugin failures
+
+# Plugin definitions
+plugins:
+  # Secrets Detection
+  - name: gitleaks
+    display_name: "Gitleaks"
+    type: builtin
+    category: secrets
+    enabled: true
+    parser_class: "GitleaksParser"
+    output_file: "gitleaks.json"
+    output_format: json
+    severity_mapping:
+      default: CRITICAL
+    description: "Pattern-based secret detection in code and git history"
+
+  - name: trufflehog
+    display_name: "TruffleHog"
+    type: builtin
+    category: secrets
+    enabled: true
+    parser_class: "TruffleHogParser"
+    output_file: "trufflehog.json"
+    output_format: json
+    severity_mapping:
+      default: CRITICAL
+    description: "Verified credential detection with external validation"
+
+  # SAST (Static Application Security Testing)
+  - name: semgrep
+    display_name: "Semgrep"
+    type: builtin
+    category: sast
+    enabled: true
+    parser_class: "SemgrepParser"
+    output_file: "semgrep.json"
+    output_format: json
+    severity_mapping:
+      ERROR: CRITICAL
+      WARNING: HIGH
+      INFO: MEDIUM
+    description: "Custom SAST rules for security vulnerabilities"
+
+  # Container Security
+  - name: hadolint
+    display_name: "Hadolint"
+    type: builtin
+    category: container
+    enabled: true
+    parser_class: "HadolintParser"
+    output_file: "hadolint.json"
+    output_format: json
+    severity_mapping:
+      error: CRITICAL
+      warning: HIGH
+      info: MEDIUM
+      style: LOW
+    description: "Dockerfile security and best practices linter"
+
+  # Shell Script Security
+  - name: shellcheck
+    display_name: "ShellCheck"
+    type: builtin
+    category: shell
+    enabled: true
+    parser_class: "ShellCheckParser"
+    output_file: "shellcheck.json"
+    output_format: json
+    severity_mapping:
+      error: CRITICAL
+      warning: HIGH
+      info: MEDIUM
+      style: LOW
+    description: "Shell script security and best practices analyzer"
+
+  # Configuration Validation
+  - name: yamllint
+    display_name: "yamllint"
+    type: builtin
+    category: config
+    enabled: true
+    parser_class: "YamllintParser"
+    output_file: "yamllint.json"
+    output_format: json
+    severity_mapping:
+      error: HIGH
+      warning: MEDIUM
+    description: "YAML syntax and structure validation"
+
+  # GitHub Actions Security
+  - name: actionlint
+    display_name: "actionlint"
+    type: builtin
+    category: cicd
+    enabled: true
+    parser_class: "ActionlintParser"
+    output_file: "actionlint.json"
+    output_format: json
+    severity_mapping:
+      error: HIGH
+      warning: MEDIUM
+    description: "GitHub Actions workflow security and best practices"
+
+  # Kubernetes Security
+  - name: kube-linter
+    display_name: "kube-linter"
+    type: builtin
+    category: kubernetes
+    enabled: true
+    parser_class: "KubeLinterParser"
+    output_file: "kube-linter.json"
+    output_format: json
+    severity_mapping:
+      error: CRITICAL
+      warning: HIGH
+    description: "Kubernetes manifest security and best practices"
+
+  # RBAC Security Analysis
+  - name: rbac-analyzer
+    display_name: "RBAC Analyzer"
+    type: builtin
+    category: kubernetes
+    enabled: true
+    parser_class: "RBACAnalyzerParser"
+    output_file: "rbac-analysis.json"
+    output_format: json
+    severity_mapping:
+      CRITICAL: CRITICAL
+      HIGH: HIGH
+      MEDIUM: MEDIUM
+      LOW: LOW
+    description: "Kubernetes RBAC privilege escalation detection"
+
+  # FIPS Compliance Checker (from gryan's marketplace)
+  # Plugin automatically installed during workflow setup from git source
+  - name: fips-compliance-checker
+    display_name: "FIPS Compliance Checker"
+    type: external
+    category: compliance
+    enabled: true  # Enabled for testing
+    parser_class: "ExternalPluginAdapter"
+
+    # Installation source (used by plugin installer during workflow setup)
+    source:
+      type: git
+      repository: "https://gitlab.cee.redhat.com/gryan/gryan-claude-plugins.git"
+      path: "fips-compliance-checker"  # Subdirectory in repo
+      ref: main
+      auth:
+        type: none  # Use 'token' with token_secret for private repos
+
+    # Execution configuration (adapter uses installed location)
+    execution:
+      # Automatically set by installer: ${SECURITY_PLUGINS_DIR}/<owner>/<plugin-name>
+      plugin_path: "${SECURITY_PLUGINS_DIR}/gryan/fips-compliance-checker"
+      command: "./scripts/python/scan-python-fips.sh"
+      args: ["--path", "${WORKSPACE}", "--json"]
+      timeout: 600
+
+    # Output configuration
+    output_file: "fips-compliance.json"
+    output_format: json
+
+    # Field mapping (FIPS uses nested structure: location.file, location.line, compliance.violation)
+    field_mapping:
+      file: location.file
+      line: location.line
+      rule: compliance.violation
+      description: compliance.violation
+      severity: severity
+
+    # Severity mapping
+    severity_mapping:
+      CRITICAL: CRITICAL
+      HIGH: HIGH
+      MEDIUM: MEDIUM
+      LOW: LOW
+
+    description: "FIPS 140-3 Python compliance validation for cryptographic operations"
