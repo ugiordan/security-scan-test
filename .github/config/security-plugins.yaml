@@ -145,7 +145,7 @@ plugins:
     display_name: "FIPS Compliance Checker"
     type: external
     category: compliance
-    enabled: true  # Enabled for testing
+    enabled: false  # Disabled for initial testing - test built-in scanners first
     parser_class: "ExternalPluginAdapter"
 
     # Installation source (used by plugin installer during workflow setup)
