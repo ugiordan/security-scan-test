@@ -10,9 +10,13 @@ from pathlib import Path
 import sys
 import json
 
-from .registry import PluginRegistry
-from .factory import PluginFactory
-from .executor import PluginExecutor
+# Add parent directory to path for imports when run as script
+if __name__ == '__main__':
+    sys.path.insert(0, str(Path(__file__).parent))
+
+from registry import PluginRegistry
+from factory import PluginFactory
+from executor import PluginExecutor
 
 
 def main():
