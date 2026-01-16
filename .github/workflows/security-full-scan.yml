@@ -44,6 +44,19 @@ jobs:
           fetch-depth: 0  # Full history for accurate analysis
 
       # ============================================================================
+      # EXTERNAL PLUGIN INSTALLATION
+      # ============================================================================
+      # Install external security plugins from git sources before running scans.
+      # Plugins are cloned to ${SECURITY_PLUGINS_DIR} and executed by ExternalPluginAdapter.
+
+      - name: Install External Security Plugins
+        run: python3 .github/scripts/security/install-plugins.py
+        env:
+          SECURITY_PLUGINS_DIR: /opt/security-plugins
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+        continue-on-error: true  # Don't block workflow if external plugin installation fails
+
+      # ============================================================================
       # SECRETS DETECTION - Gitleaks (Pattern-based)
       # ============================================================================
       # Tool: Gitleaks v8.30.0
@@ -442,6 +455,7 @@ jobs:
           GITHUB_REF_NAME: ${{ github.ref_name }}
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_RUN_ID: ${{ github.run_id }}
+          SECURITY_PLUGINS_DIR: /opt/security-plugins
         run: |
           python3 .github/scripts/run-security-orchestrator.py
           echo "## Security Plugin System Results" >> $GITHUB_STEP_SUMMARY
