@@ -294,11 +294,13 @@ jobs:
           rm -f "${KUBE_LINTER_ASSET}"
 
       - name: Set up Go for kustomize
+        if: hashFiles('go.mod') != ''
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00  # v6.0.0
         with:
           go-version-file: go.mod
 
       - name: Run kube-linter
+        if: hashFiles('config/manifests/**') != ''
         id: kubelinter
         timeout-minutes: 5
         run: |
