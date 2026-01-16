@@ -1,0 +1,445 @@
+# Security Scanning Configuration Reference
+# Version: 2.0
+# Last Updated: 2026-01-12
+
+# =============================================================================
+# SCAN PRESETS
+# =============================================================================
+# Quick configurations for common use cases
+
+presets:
+  all:
+    description: "Maximum security coverage - all scans enabled"
+    runtime: "~2-3 minutes"
+    recommended_for: "Production releases, security audits, compliance checks"
+    scans:
+      gitleaks: true
+      trufflehog: true
+      semgrep: true
+      shellcheck: true
+      hadolint: true
+      yamllint: true
+      actionlint: true
+      kube_linter: true  # Only for Kubernetes operators
+      rbac_analyzer: true
+
+  recommended:
+    description: "Essential security scans - balanced coverage and speed"
+    runtime: "~1-2 minutes"
+    recommended_for: "Daily CI/CD, pull request checks (DEFAULT)"
+    scans:
+      gitleaks: true
+      trufflehog: true
+      semgrep: true
+      shellcheck: true
+      hadolint: true
+      yamllint: false  # Code quality, not security
+      actionlint: true
+      kube_linter: true  # Only for Kubernetes operators
+      rbac_analyzer: true
+
+  minimal:
+    description: "Critical security scans only - fastest runtime"
+    runtime: "~45-60 seconds"
+    recommended_for: "Rapid iteration, feature branches, pre-commit"
+    scans:
+      gitleaks: true
+      trufflehog: false  # Skip verification for speed
+      semgrep: true
+      shellcheck: false
+      hadolint: false
+      yamllint: false
+      actionlint: true
+      kube_linter: false
+      rbac_analyzer: false
+
+  secrets_only:
+    description: "Only secret detection - fastest secret checks"
+    runtime: "~30-45 seconds"
+    recommended_for: "Pre-commit hooks, fast secret validation"
+    scans:
+      gitleaks: true
+      trufflehog: true
+      semgrep: false
+      shellcheck: false
+      hadolint: false
+      yamllint: false
+      actionlint: false
+      kube_linter: false
+      rbac_analyzer: false
+
+  custom:
+    description: "User-defined scan selection"
+    runtime: "Varies based on enabled scans"
+    recommended_for: "Specific requirements, advanced users"
+    scans:
+      # User selects individually via workflow inputs
+
+# =============================================================================
+# SECURITY TOOLS
+# =============================================================================
+
+tools:
+  gitleaks:
+    version: "v8.30.0"
+    docker_image: "ghcr.io/gitleaks/gitleaks"
+    docker_digest: "sha256:105ac66a57b2bb8afb61a3b8a5dcc4817773d03724a7e8a515214cfe58225556"
+    purpose: "Pattern-based secret detection"
+    runtime: "~30 seconds"
+    detects:
+      - "API keys (800+ patterns)"
+      - "Passwords and tokens"
+      - "Private keys"
+      - "OAuth secrets"
+      - "Database credentials"
+    output_format: "JSON"
+    documentation: "https://github.com/gitleaks/gitleaks"
+    configuration_file: ".gitleaksignore"
+
+  trufflehog:
+    version: "v3.92.3"
+    docker_image: "ghcr.io/trufflesecurity/trufflehog"
+    docker_digest: "sha256:e42f126628f0a0ce4ee670bf62b71543eca5a3a2d3c590ff361091b841ac39c1"
+    purpose: "Verified credential detection with live API validation"
+    runtime: "~45 seconds"
+    detects:
+      - "800+ credential types"
+      - "Active/verified secrets"
+      - "Working API keys"
+    output_format: "JSON"
+    documentation: "https://github.com/trufflesecurity/trufflehog"
+    notes: "Slower than Gitleaks but verifies secrets are active"
+
+  semgrep:
+    version: "v1.145.0"
+    docker_image: "semgrep/semgrep"
+    docker_digest: "sha256:1f0850c540140c6da68811b21012fd26e91e5323daae245b0a71e70b72a89d2a"
+    purpose: "Custom SAST rules for code vulnerabilities"
+    runtime: "~20 seconds"
+    detects:
+      - "RBAC privilege escalation patterns"
+      - "Wildcard permissions"
+      - "Insecure Kubernetes configurations"
+      - "OWASP Top 10 patterns"
+    output_format: "SARIF (uploaded to GitHub Security tab)"
+    documentation: "https://semgrep.dev/docs/"
+    configuration_file: ".github/config/semgrep.yaml"
+
+  shellcheck:
+    version: "v0.10.0"
+    installation: "apt-get install shellcheck"
+    purpose: "Shell script static analysis"
+    runtime: "~5 seconds"
+    detects:
+      - "Command injection risks"
+      - "Unquoted variables"
+      - "Missing error handling"
+      - "Bash-specific vulnerabilities"
+    output_format: "JSON"
+    documentation: "https://www.shellcheck.net/"
+    standards: "Prevents CWE-78 (OS Command Injection)"
+
+  hadolint:
+    version: "v3.3.0"
+    github_action: "hadolint/hadolint-action@v3.3.0"
+    purpose: "Dockerfile security linter"
+    runtime: "~3 seconds"
+    detects:
+      - "Unpinned base images"
+      - "Running as root"
+      - "Secrets in ENV variables"
+      - "Missing health checks"
+    output_format: "SARIF (uploaded to GitHub Security tab)"
+    documentation: "https://github.com/hadolint/hadolint"
+    standards: "CIS Docker Benchmark compliance"
+
+  yamllint:
+    version: "1.37.1"
+    installation: "pip install yamllint==1.37.1"
+    purpose: "YAML syntax and style validation"
+    runtime: "~10 seconds"
+    detects:
+      - "Syntax errors"
+      - "Inconsistent indentation"
+      - "Truthy value issues"
+      - "Line length violations"
+    output_format: "Text (parsable format)"
+    documentation: "https://yamllint.readthedocs.io/"
+    notes: "Code quality tool, not strictly security"
+
+  actionlint:
+    version: "v1.7.8"
+    docker_image: "rhysd/actionlint"
+    docker_digest: "sha256:32a5c57cebdc2aad2ca4083dcdf08a784795b06adde2082fd2ef724445582390"
+    purpose: "GitHub Actions workflow validation"
+    runtime: "~5 seconds"
+    detects:
+      - "Invalid expressions"
+      - "Incorrect job dependencies"
+      - "Unsafe permissions"
+      - "Secret handling issues"
+    output_format: "Text"
+    documentation: "https://github.com/rhysd/actionlint"
+
+  kube_linter:
+    version: "v0.8.1"
+    download_url: "https://github.com/stackrox/kube-linter/releases/download/v0.8.1/kube-linter-linux.tar.gz"
+    sha256: "49629abaf0ae3283e9437214a2bea4bf4029008744e05471c85dd3872464f50b"
+    purpose: "Kubernetes manifest security validation"
+    runtime: "~10 seconds"
+    detects:
+      - "Privilege escalation risks"
+      - "Missing security contexts"
+      - "Dangerous capabilities"
+      - "Host namespace access"
+      - "Wildcard RBAC permissions"
+    output_format: "SARIF + JSON"
+    documentation: "https://docs.kubelinter.io/"
+    configuration_file: ".kube-linter.yaml"
+    applicable_to: "Kubernetes operators only"
+    severity_mappings:
+      critical:
+        - "cluster-admin-role-binding"
+        - "privileged-container"
+        - "host-network"
+        - "host-pid"
+        - "host-ipc"
+        - "docker-sock"
+        - "access-to-create-pods"
+        - "privilege-escalation-container"
+        - "run-as-non-root"
+        - "no-read-only-root-fs"
+        - "privileged-ports"
+      high:
+        - "access-to-secrets"
+        - "wildcard-in-rules"
+        - "sensitive-host-mounts"
+        - "writable-host-mount"
+        - "unsafe-proc-mount"
+        - "unsafe-sysctls"
+        - "default-service-account"
+        - "env-var-secret"
+        - "read-secret-from-env-var"
+        - "drop-net-raw-capability"
+        - "exposed-services"
+        - "non-isolated-pod"
+        - "ssh-port"
+        - "latest-tag"
+        - "no-system-group-binding"
+      medium:
+        - "no-liveness-probe"
+        - "no-readiness-probe"
+        - "unset-cpu-requirements"
+        - "unset-memory-requirements"
+        - "use-namespace"
+        - "non-existent-service-account"
+
+  rbac_analyzer:
+    version: "custom"
+    script: ".github/scripts/rbac-analyzer.py"
+    purpose: "RBAC privilege chain analysis"
+    runtime: "~15 seconds"
+    detects:
+      - "Privilege escalation chains"
+      - "Dangerous verbs (escalate, impersonate, bind)"
+      - "Dangerous resources (secrets, pods/exec)"
+      - "Wildcard permissions"
+      - "Pods with cluster-admin access"
+    output_format: "Markdown"
+    why_custom: "No existing tool maps Pod → ServiceAccount → Role → Permissions chains"
+
+# =============================================================================
+# SEVERITY LEVELS
+# =============================================================================
+
+severity_levels:
+  critical:
+    emoji: "🔴"
+    action: "Fix immediately"
+    examples:
+      - "Verified active credentials in code"
+      - "cluster-admin RBAC bindings"
+      - "Privileged containers with host access"
+    impact: "Direct exploitation possible, high risk"
+
+  high:
+    emoji: "🟠"
+    action: "Fix within 1 week"
+    examples:
+      - "Unverified secrets"
+      - "Wildcard RBAC permissions"
+      - "Dangerous Kubernetes capabilities"
+    impact: "Potential privilege escalation or data exposure"
+
+  medium:
+    emoji: "🟡"
+    action: "Fix within 1 month"
+    examples:
+      - "Missing security contexts"
+      - "Unquoted shell variables"
+      - "Missing resource limits"
+    impact: "Configuration weaknesses that could be exploited"
+
+  low:
+    emoji: "🔵"
+    action: "Review and address as time permits"
+    examples:
+      - "Code quality issues"
+      - "YAML formatting"
+      - "Missing readiness probes"
+    impact: "Best practices violations, minimal security risk"
+
+# =============================================================================
+# WORKFLOW TRIGGERS
+# =============================================================================
+
+triggers:
+  workflow_dispatch:
+    description: "Manual trigger via GitHub UI or gh CLI"
+    use_case: "On-demand security validation"
+
+  schedule:
+    description: "Automated weekly scan"
+    cron: "0 0 * * 0"  # Sunday at 00:00 UTC
+    use_case: "Baseline security tracking"
+
+  # pull_request: (optional - uncomment if desired)
+  #   description: "Run on every PR"
+  #   use_case: "Catch issues before merge"
+
+# =============================================================================
+# ADVANCED OPTIONS
+# =============================================================================
+
+advanced_options:
+  scan_git_history:
+    description: "Scan full git history for secrets (slower)"
+    default: false
+    impact: "Finds historical secrets but increases false positives"
+    use_when: "Incident response, security audits"
+
+  test_advisory:
+    description: "Test security advisory creation"
+    default: false
+    use_when: "Verifying GitHub App credentials"
+
+  fail_on_critical:
+    description: "Fail workflow on CRITICAL findings"
+    default: true
+    use_when: "Always (production safety)"
+
+  fail_on_high:
+    description: "Fail workflow on HIGH findings"
+    default: true
+    use_when: "Always (production safety)"
+
+# =============================================================================
+# GITHUB APP AUTHENTICATION (for security advisories)
+# =============================================================================
+
+github_app:
+  required_for: "Automatic security advisory creation"
+  permissions:
+    - "repository_advisories:write"
+  secrets_required:
+    - "SECURITY_APP_ID"
+    - "SECURITY_APP_PRIVATE_KEY"
+  notes: "GITHUB_TOKEN does not support repository_advisories permission"
+
+# =============================================================================
+# REPOSITORY TYPE DETECTION
+# =============================================================================
+
+repository_types:
+  kubernetes_operator:
+    indicators:
+      - "config/ directory with kustomization.yaml"
+      - "Makefile with 'prepare' target"
+      - "RBAC manifests (ClusterRole, RoleBinding)"
+    recommended_preset: "recommended"
+    tools_enabled:
+      - gitleaks
+      - trufflehog
+      - semgrep
+      - shellcheck
+      - hadolint
+      - yamllint
+      - actionlint
+      - kube_linter  # KEY DIFFERENTIATOR
+      - rbac_analyzer  # KEY DIFFERENTIATOR
+
+  go_application:
+    indicators:
+      - "go.mod file"
+      - "No Kubernetes manifests"
+    recommended_preset: "recommended"
+    tools_enabled:
+      - gitleaks
+      - trufflehog
+      - semgrep
+      - shellcheck
+      - hadolint
+      - actionlint
+      # yamllint: disabled (typically no YAML)
+      # kube_linter: disabled (not applicable)
+      # rbac_analyzer: disabled (not applicable)
+
+  python_application:
+    indicators:
+      - "setup.py or pyproject.toml"
+    recommended_preset: "recommended"
+    tools_enabled:
+      - gitleaks
+      - trufflehog
+      - semgrep  # (adjust rules for Python)
+      - shellcheck
+      - hadolint
+      - actionlint
+      # yamllint: optional (if has config YAML)
+      # kube_linter: disabled
+      # rbac_analyzer: disabled
+
+# =============================================================================
+# ARTIFACT RETENTION
+# =============================================================================
+
+artifacts:
+  comprehensive_security_report:
+    retention_days: 90
+    includes:
+      - "security-report.md"
+      - "security-summary.json"
+      - "yamllint-report.md"
+
+  rbac_analysis_report:
+    retention_days: 30
+    includes:
+      - "rbac-analysis.md"
+
+# =============================================================================
+# REFERENCES
+# =============================================================================
+
+references:
+  documentation: ".github/SECURITY_SCANNING.md"
+  workflow: ".github/workflows/security-full-scan.yml"
+  report_generator: ".github/scripts/generate-security-report.py"
+  rbac_analyzer: ".github/scripts/rbac-analyzer.py"
+
+# =============================================================================
+# VERSION HISTORY
+# =============================================================================
+
+version_history:
+  "2.0":
+    date: "2026-01-12"
+    changes:
+      - "Added user-controllable scan presets"
+      - "Added granular enable/disable controls"
+      - "Added comprehensive documentation"
+      - "Updated all tool versions"
+      - "Aligned across all repositories"
+  "1.0":
+    date: "2024-01-01"
+    changes:
+      - "Initial security scanning infrastructure"

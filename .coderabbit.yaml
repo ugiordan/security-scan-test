@@ -1,0 +1,159 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+# CodeRabbit Configuration - Security Plugin System
+#
+# This repository provides the extensible security scanning framework
+# For scanning target repositories, see the framework documentation
+
+language: "en-US"
+early_access: false
+
+tone_instructions: "Focus on: (1) Plugin architecture security, (2) Input validation for external plugins, (3) Code injection risks, (4) Authentication security, (5) Resource exhaustion. Provide CVE/CWE IDs, severity ratings, and detailed remediation for all security issues."
+
+reviews:
+  profile: chill
+
+  request_changes_workflow: false  # Non-blocking for plugin development
+
+  high_level_summary: true
+  review_status: true
+  collapse_walkthrough: false
+  poem: false
+
+  commit_status: true
+  fail_commit_status: false
+
+  # ============================================================================
+  # SECURITY TOOLS FOR PLUGIN SYSTEM DEVELOPMENT
+  # ============================================================================
+
+  tools:
+    # Secrets detection (pattern-based)
+    gitleaks:
+      enabled: true
+
+    # Custom security rules for Python plugin system
+    semgrep:
+      enabled: true
+      config_file: ".semgrep.yaml"  # Custom rules for plugin system
+
+    # Shell script security for external plugin runners
+    shellcheck:
+      enabled: true
+
+    # YAML validation for plugin registry configs
+    yamllint:
+      enabled: true
+
+    # Markdown linting for documentation
+    markdownlint:
+      enabled: true
+
+    # Disabled tools (not applicable to Python plugin system)
+    hadolint:
+      enabled: false  # No Dockerfiles in plugin system
+    checkov:
+      enabled: false  # No IaC manifests in plugin system
+    osvScanner:
+      enabled: false  # No dependencies yet
+
+  # Path-specific security instructions
+  path_instructions:
+    # Plugin system core
+    - path: ".github/scripts/security/**/*.py"
+      instructions: |
+        CRITICAL SECURITY CHECKS:
+        1. Input validation for plugin configurations (prevent YAML injection)
+        2. Command injection prevention in subprocess calls
+        3. Path traversal prevention (validate file paths)
+        4. Secrets handling (token injection for git clone)
+        5. Resource exhaustion (timeouts, memory limits)
+        6. Proper error handling and cleanup (temp directories)
+        7. No eval() or exec() for plugin execution
+
+    # External plugin runner
+    - path: ".github/scripts/security/plugins/external/runner.py"
+      instructions: |
+        EXTERNAL PLUGIN SECURITY:
+        1. YAML injection prevention (validate plugin configs)
+        2. Command injection (validate scanner paths and arguments)
+        3. Path traversal (normalize and validate file paths)
+        4. Token leakage (ensure tokens not logged or leaked)
+        5. Clone authentication (secure token injection)
+        6. Timeout enforcement (prevent runaway processes)
+        7. Cleanup guarantees (always remove temp directories)
+        8. Subprocess security (no shell=True, validate inputs)
+
+    # Plugin registry and configuration
+    - path: ".github/config/security-plugins.yaml"
+      instructions: |
+        PLUGIN REGISTRY SECURITY:
+        1. Validate all plugin configurations before use
+        2. Check for suspicious git repositories (domain allowlist)
+        3. Verify timeout values are reasonable
+        4. Ensure auth secrets are properly named
+        5. Validate field_mapping keys (no code injection)
+        6. Check severity_mapping for valid levels only
+
+    # Base plugin interface
+    - path: ".github/scripts/security/plugins/base.py"
+      instructions: |
+        PLUGIN INTERFACE SECURITY:
+        1. Input validation in __init__ (validate config structure)
+        2. Path sanitization (prevent path traversal)
+        3. Severity mapping validation (only allow standard levels)
+        4. No dynamic code execution from config
+        5. Proper exception handling
+
+    # Built-in parsers
+    - path: ".github/scripts/security/plugins/builtin/**/*.py"
+      instructions: |
+        PARSER SECURITY:
+        1. JSON parsing safety (handle malformed JSON)
+        2. File path validation (prevent path traversal)
+        3. No eval/exec on parsed content
+        4. Validate field types from parsed data
+        5. Handle missing/unexpected fields gracefully
+
+    # Documentation
+    - path: "docs/**/*.md"
+      instructions: |
+        DOCUMENTATION SECURITY:
+        1. No example secrets or tokens
+        2. Warn about security risks in examples
+        3. Recommend self-hosted runners for private repos
+        4. Document authentication security best practices
+        5. Provide secure code examples only
+
+    # Plugin registry examples
+    - path: "**/*example*.yaml"
+      instructions: |
+        EXAMPLE SECURITY:
+        1. No real secrets or tokens
+        2. Use placeholder values (GITLAB_TOKEN not actual token)
+        3. Demonstrate secure configurations
+        4. Include timeout settings
+        5. Show auth best practices
+
+  # Exclude non-relevant paths
+  path_filters:
+    - "!.git/**"
+    - "!**/__pycache__/**"
+    - "!**/*.pyc"
+    - "!.pytest_cache/**"
+
+  auto_review:
+    enabled: true
+    drafts: false
+    ignore_title_keywords:
+      - "WIP"
+      - "DO NOT MERGE"
+    base_branches:
+      - main
+      - incubation
+
+knowledge_base:
+  learnings:
+    scope: local
+  issues:
+    scope: local
