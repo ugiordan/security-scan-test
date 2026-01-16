@@ -7,12 +7,12 @@ This ensures all imports work correctly when run from GitHub Actions.
 import sys
 from pathlib import Path
 
-# Add the security scripts directory to Python path
-security_dir = Path(__file__).parent / 'security'
-sys.path.insert(0, str(security_dir))
+# Add the parent directory (.github/scripts) to Python path so we can import 'security' as a package
+scripts_dir = Path(__file__).parent
+sys.path.insert(0, str(scripts_dir))
 
-# Now import and run the orchestrator
-from orchestrator import main
+# Now import and run the orchestrator as a package module
+from security.orchestrator import main
 
 if __name__ == '__main__':
     sys.exit(main())
